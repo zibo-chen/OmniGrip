@@ -29,7 +29,13 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libxcb1-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev
+          sudo apt-get install -y libxcb1-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev \
+            libxkbcommon-dev libwayland-dev libdbus-1-dev cmake clang libclang-dev
+
+      - name: Setup LLVM (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: echo "LIBCLANG_PATH=$($env:ProgramFiles)\LLVM\lib" >> $env:GITHUB_ENV
 
       - name: Cache cargo registry
         uses: actions/cache@v4
@@ -83,7 +89,13 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libxcb1-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev
+          sudo apt-get install -y libxcb1-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev \
+            libxkbcommon-dev libwayland-dev libdbus-1-dev cmake clang libclang-dev
+
+      - name: Setup LLVM (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: echo "LIBCLANG_PATH=$($env:ProgramFiles)\LLVM\lib" >> $env:GITHUB_ENV
 
       - name: Cache cargo registry
         uses: actions/cache@v4
