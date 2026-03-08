@@ -1,0 +1,13 @@
+{
+    "servers": {
+        "omni-grip": {
+            "type": "stdio",
+            "command": "./target/release/omni-grip",
+            "args": [],
+            "env": {
+                "RUST_LOG": "warn"
+            }
+        },
+    },
+    "inputs": []
+}
