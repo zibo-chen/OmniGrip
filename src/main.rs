@@ -88,9 +88,32 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// 尝试创建 OCR 引擎 (查找模型文件)
+/// 尝试创建 OCR 引擎
+///
+/// 优先使用编译时嵌入的模型文件（零配置），
+/// 若失败则回退到文件系统查找。
 fn try_create_ocr_engine() -> anyhow::Result<omni_grip::infrastructure::ocr_engine::OcrRsEngine> {
-    // 模型文件名模式 (按优先级排列)
+    // ── 1. 使用编译时嵌入的模型数据 (推荐，开箱即用) ──
+    static DET_MODEL: &[u8] = include_bytes!("../res/chinese_model/PP-OCRv5_mobile_det_fp16.mnn");
+    static REC_MODEL: &[u8] = include_bytes!("../res/chinese_model/PP-OCRv5_mobile_rec_fp16.mnn");
+    static CHARSET: &[u8] = include_bytes!("../res/chinese_model/ppocr_keys_v5.txt");
+
+    match omni_grip::infrastructure::ocr_engine::OcrRsEngine::from_bytes(
+        DET_MODEL, REC_MODEL, CHARSET,
+    ) {
+        Ok(engine) => {
+            tracing::info!("OCR engine initialized from embedded model files");
+            return Ok(engine);
+        }
+        Err(e) => {
+            tracing::warn!(
+                "Failed to init OCR from embedded data: {}, trying file system...",
+                e
+            );
+        }
+    }
+
+    // ── 2. 回退：从文件系统查找模型文件 ──
     let model_patterns: &[(&str, &str, &str)] = &[
         // PP-OCRv5 模型 (优先)
         (
