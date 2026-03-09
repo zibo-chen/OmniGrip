@@ -36,7 +36,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libxcb1-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev \
-            libxkbcommon-dev libwayland-dev libdbus-1-dev libpipewire-0.3-dev cmake clang libclang-dev
+            libxkbcommon-dev libwayland-dev libdbus-1-dev libpipewire-0.3-dev cmake clang libclang-dev \
+            libegl1-mesa-dev
 
       - name: Setup LLVM (Windows)
         if: runner.os == 'Windows'
@@ -98,7 +99,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libxcb1-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev \
-            libxkbcommon-dev libwayland-dev libdbus-1-dev libpipewire-0.3-dev cmake clang libclang-dev
+            libxkbcommon-dev libwayland-dev libdbus-1-dev libpipewire-0.3-dev cmake clang libclang-dev \
+            libegl1-mesa-dev
 
       - name: Setup LLVM (Windows)
         if: runner.os == 'Windows'
