@@ -18,7 +18,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            cargo_flags: ""
+          - os: macos-latest
+            cargo_flags: ""
+          - os: windows-latest
+            cargo_flags: "--release"
     steps:
       - uses: actions/checkout@v4
 
@@ -30,12 +36,14 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libxcb1-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev \
-            libxkbcommon-dev libwayland-dev libdbus-1-dev cmake clang libclang-dev
+            libxkbcommon-dev libwayland-dev libdbus-1-dev libpipewire-0.3-dev cmake clang libclang-dev
 
       - name: Setup LLVM (Windows)
         if: runner.os == 'Windows'
-        shell: pwsh
-        run: echo "LIBCLANG_PATH=$($env:ProgramFiles)\LLVM\lib" >> $env:GITHUB_ENV
+        shell: bash
+        run: |
+          echo "LIBCLANG_PATH=C:\\Program Files\\LLVM\\bin" >> $GITHUB_ENV
+          echo "RUSTFLAGS=-C target-feature=+crt-static" >> $GITHUB_ENV
 
       - name: Cache cargo registry
         uses: actions/cache@v4
@@ -49,7 +57,7 @@ jobs:
             ${{ runner.os }}-cargo-
 
       - name: Run tests
-        run: cargo test --verbose
+        run: cargo test ${{ matrix.cargo_flags }} --verbose
 
   # 仅在 tag 推送时构建并发布
   release:
@@ -90,12 +98,14 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libxcb1-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev \
-            libxkbcommon-dev libwayland-dev libdbus-1-dev cmake clang libclang-dev
+            libxkbcommon-dev libwayland-dev libdbus-1-dev libpipewire-0.3-dev cmake clang libclang-dev
 
       - name: Setup LLVM (Windows)
         if: runner.os == 'Windows'
-        shell: pwsh
-        run: echo "LIBCLANG_PATH=$($env:ProgramFiles)\LLVM\lib" >> $env:GITHUB_ENV
+        shell: bash
+        run: |
+          echo "LIBCLANG_PATH=C:\\Program Files\\LLVM\\bin" >> $GITHUB_ENV
+          echo "RUSTFLAGS=-C target-feature=+crt-static" >> $GITHUB_ENV
 
       - name: Cache cargo registry
         uses: actions/cache@v4
