@@ -20,6 +20,9 @@ base64 = "0.22"
 ocr-rs = "2"
 strsim = "0.10" # 模糊匹配
 
+# CLI
+clap = { version = "4", features = ["derive"] }
+
 # Context & Utils
 arboard = "3.3"                                                     # 剪贴板
 anyhow = "1"

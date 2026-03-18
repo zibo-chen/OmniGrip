@@ -1,13 +1,16 @@
 // ============================================================================
 // OmniGrip - 程序入口 (Composition Root)
 // ============================================================================
-// 组装所有 DDD 层级，构造依赖图并启动 MCP Server。
+// 组装所有 DDD 层级，构造依赖图。
+// 支持两种运行模式：MCP Server (默认) 和 CLI 命令行。
 // ============================================================================
 
 use std::sync::Arc;
 
+use clap::{Parser, Subcommand};
 use tracing;
 
+use omni_grip::adapter::cli::{CliCommand, CliExecutor};
 use omni_grip::adapter::mcp_server::OmniGripMcpServer;
 use omni_grip::application::{
     action_service::ActionService, context_service::ContextService, ocr_service::OcrService,
@@ -16,22 +19,46 @@ use omni_grip::application::{
 use omni_grip::infrastructure::{
     clipboard::ArboardClipboard,
     enigo_input::EnigoInput,
-    // ocr_engine::OcrRsEngine,  // OCR 需要模型文件，按需启用
     window::{PlatformWindowManager, RuntimeOsContext},
     xcap_capture::XcapCapture,
 };
 
+// ===========================================================================
+// 顶层 CLI 定义
+// ===========================================================================
+
+#[derive(Parser)]
+#[command(
+    name = "omni-grip",
+    version,
+    about = "Cross-platform computer control for LLM-driven GUI automation"
+)]
+struct Cli {
+    #[command(subcommand)]
+    command: Option<TopCommand>,
+}
+
+#[derive(Subcommand)]
+enum TopCommand {
+    /// Start MCP server on stdio (default mode)
+    Mcp,
+
+    #[command(flatten)]
+    Cli(CliCommand),
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // 初始化日志
+    let cli = Cli::parse();
+
+    // MCP 模式下日志写入 stderr（stdout 用于 MCP 通信）
+    // CLI 模式下日志也写入 stderr（stdout 用于 JSON 输出）
     tracing::subscriber::set_global_default(
         tracing_subscriber::FmtSubscriber::builder()
             .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-            .with_writer(std::io::stderr) // MCP 使用 stdout 通信，日志写入 stderr
+            .with_writer(std::io::stderr)
             .finish(),
     )?;
-
-    tracing::info!("OmniGrip MCP Server starting...");
 
     // -----------------------------------------------------------------------
     // 1. 构造基础设施层 (Infrastructure)
@@ -42,8 +69,6 @@ async fn main() -> anyhow::Result<()> {
     let window_mgr = Arc::new(PlatformWindowManager::new());
     let os_ctx = Arc::new(RuntimeOsContext::new());
 
-    // OCR 引擎 (需要 PaddleOCR 模型文件)
-    // 如果模型文件不存在，使用空的 OCR 实现
     let ocr_engine: Arc<dyn omni_grip::domain::ocr::OcrEngine> = match try_create_ocr_engine() {
         Ok(engine) => {
             tracing::info!("OCR engine initialized successfully");
@@ -70,21 +95,28 @@ async fn main() -> anyhow::Result<()> {
     let ocr_svc = Arc::new(OcrService::new(ocr_engine, capture));
 
     // -----------------------------------------------------------------------
-    // 3. 构造协议适配层并启动 MCP Server
+    // 3. 根据模式启动
     // -----------------------------------------------------------------------
-    let server = OmniGripMcpServer::new(vision_svc, action_svc, context_svc, ocr_svc);
+    match cli.command {
+        None | Some(TopCommand::Mcp) => {
+            // MCP Server 模式
+            tracing::info!("OmniGrip MCP Server starting...");
+            let server = OmniGripMcpServer::new(vision_svc, action_svc, context_svc, ocr_svc);
 
-    tracing::info!("OmniGrip MCP Server running on stdio");
+            use rmcp::ServiceExt;
+            let transport = rmcp::transport::io::stdio();
+            let service = server.serve(transport).await?;
+            service.waiting().await?;
 
-    // 通过 stdin/stdout 启动 MCP 服务
-    use rmcp::ServiceExt;
-    let transport = rmcp::transport::io::stdio();
-    let service = server.serve(transport).await?;
+            tracing::info!("OmniGrip MCP Server stopped");
+        }
+        Some(TopCommand::Cli(cmd)) => {
+            // CLI 命令模式
+            let executor = CliExecutor::new(vision_svc, action_svc, context_svc, ocr_svc);
+            executor.execute(cmd).await?;
+        }
+    }
 
-    // 等待客户端断开连接
-    service.waiting().await?;
-
-    tracing::info!("OmniGrip MCP Server stopped");
     Ok(())
 }
 
