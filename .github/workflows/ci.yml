@@ -76,10 +76,10 @@ jobs:
             archive: tar.gz
           # macOS
           - target: x86_64-apple-darwin
-            os: macos-13  # Intel runner
+            os: macos-latest  
             archive: tar.gz
           - target: aarch64-apple-darwin
-            os: macos-latest  # Apple Silicon runner
+            os: macos-latest  
             archive: tar.gz
           # Windows
           - target: x86_64-pc-windows-msvc
