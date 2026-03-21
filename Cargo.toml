@@ -17,8 +17,8 @@ image = "0.25"
 base64 = "0.22"
 
 # OCR
-ocr-rs = "2"
-strsim = "0.10" # 模糊匹配
+ocr-rs = "2.2.1"
+strsim = "0.10"  # 模糊匹配
 
 # CLI
 clap = { version = "4", features = ["derive"] }

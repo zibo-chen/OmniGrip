@@ -151,7 +151,7 @@ mod platform {
     pub fn get_active_window() -> anyhow::Result<WindowInfo> {
         unsafe {
             let hwnd = GetForegroundWindow();
-            if hwnd.0.is_null() {
+            if hwnd.0 == 0 {
                 anyhow::bail!("No foreground window found");
             }
 
@@ -178,7 +178,7 @@ mod platform {
         let hwnd_val: usize = window_id
             .parse()
             .map_err(|_| anyhow::anyhow!("Invalid window ID: {}", window_id))?;
-        let hwnd = HWND(hwnd_val as *mut _);
+        let hwnd = HWND(hwnd_val as isize);
 
         unsafe {
             // 先恢复窗口（如果最小化）
