@@ -8,6 +8,9 @@
 pub mod clipboard;
 pub mod enigo_input;
 pub mod image_proc;
+#[cfg(target_os = "macos")]
+mod macos_permissions;
 pub mod ocr_engine;
+pub mod permissions;
 pub mod window;
 pub mod xcap_capture;

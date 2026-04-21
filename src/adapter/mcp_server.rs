@@ -126,6 +126,12 @@ pub struct ClipboardWriteParams {
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct GetPermissionsParams {}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct RequestPermissionsParams {}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct FocusWindowParams {
     /// 窗口 ID (从 list_windows 获取)
     pub window_id: String,
@@ -501,6 +507,48 @@ impl OmniGripMcpServer {
                 McpError::internal_error(format!("focus_window failed: {}", e), None)
             })?;
         Ok(CallToolResult::success(vec![Content::text("ok")]))
+    }
+
+    /// 获取当前系统权限状态
+    #[tool(description = "Get current system permission status. On macOS this reports Accessibility and Screen Recording grant state, whether a restart is needed, and whether a prompt can be triggered.")]
+    async fn get_permissions(
+        &self,
+        _params: Parameters<GetPermissionsParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let status = self
+            .context
+            .get_permission_status()
+            .await
+            .map_err(|e| {
+                McpError::internal_error(format!("get_permissions failed: {}", e), None)
+            })?;
+
+        let text = serde_json::to_string(&status).map_err(|e| {
+            McpError::internal_error(format!("serialize permissions failed: {}", e), None)
+        })?;
+
+        Ok(CallToolResult::success(vec![Content::text(text)]))
+    }
+
+    /// 主动触发系统权限申请
+    #[tool(description = "Trigger system permission requests and return the latest status snapshot. On macOS this requests Accessibility and Screen Recording permissions when missing.")]
+    async fn request_permissions(
+        &self,
+        _params: Parameters<RequestPermissionsParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let status = self
+            .context
+            .request_permissions()
+            .await
+            .map_err(|e| {
+                McpError::internal_error(format!("request_permissions failed: {}", e), None)
+            })?;
+
+        let text = serde_json::to_string(&status).map_err(|e| {
+            McpError::internal_error(format!("serialize permissions failed: {}", e), None)
+        })?;
+
+        Ok(CallToolResult::success(vec![Content::text(text)]))
     }
 
     // -----------------------------------------------------------------------

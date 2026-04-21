@@ -16,7 +16,7 @@ impl XcapCapture {
 
 impl ScreenCapture for XcapCapture {
     fn get_displays(&self) -> anyhow::Result<Vec<DisplayInfo>> {
-        let monitors = Monitor::all()?;
+        let monitors = all_monitors()?;
         let mut displays = Vec::new();
         for m in &monitors {
             displays.push(DisplayInfo {
@@ -34,13 +34,13 @@ impl ScreenCapture for XcapCapture {
     }
 
     fn capture_display(&self, display_id: u32) -> anyhow::Result<RawImage> {
-        let monitors = Monitor::all()?;
+        let monitors = all_monitors()?;
         let monitor = monitors
             .into_iter()
             .find(|m| m.id().unwrap_or(0) == display_id)
             .ok_or_else(|| anyhow::anyhow!("Display {} not found", display_id))?;
 
-        let image = monitor.capture_image()?;
+        let image = monitor.capture_image().map_err(with_screen_capture_context)?;
         Ok(RawImage {
             width: image.width(),
             height: image.height(),
@@ -49,7 +49,7 @@ impl ScreenCapture for XcapCapture {
     }
 
     fn capture_region(&self, region: CaptureRegion) -> anyhow::Result<RawImage> {
-        let monitors = Monitor::all()?;
+        let monitors = all_monitors()?;
 
         // 优先查找完全包含该区域的显示器
         let monitor = monitors
@@ -99,12 +99,29 @@ impl ScreenCapture for XcapCapture {
             anyhow::bail!("Region is outside of all displays");
         }
 
-        let image = monitor.capture_region(crop_x, crop_y, crop_w, crop_h)?;
+        let image = monitor
+            .capture_region(crop_x, crop_y, crop_w, crop_h)
+            .map_err(with_screen_capture_context)?;
 
         Ok(RawImage {
             width: image.width(),
             height: image.height(),
             pixels: image.into_raw(),
         })
+    }
+}
+
+fn all_monitors() -> anyhow::Result<Vec<Monitor>> {
+    Monitor::all().map_err(with_screen_capture_context)
+}
+
+fn with_screen_capture_context<E: std::fmt::Display>(error: E) -> anyhow::Error {
+    if cfg!(target_os = "macos") {
+        anyhow::anyhow!(
+            "Screen capture failed: {}. On macOS, grant OmniGrip access in System Settings > Privacy & Security > Screen Recording, then restart the process.",
+            error
+        )
+    } else {
+        anyhow::anyhow!("Screen capture failed: {}", error)
     }
 }

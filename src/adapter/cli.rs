@@ -178,6 +178,12 @@ pub enum CliCommand {
         window_id: String,
     },
 
+    /// Get current system permission status (macOS: Accessibility + Screen Recording)
+    GetPermissions,
+
+    /// Trigger system permission requests and return the latest status snapshot
+    RequestPermissions,
+
     // ── OCR ──
 
     /// Run OCR on full screen, returns text blocks with coordinates
@@ -388,6 +394,16 @@ impl CliExecutor {
             CliCommand::FocusWindow { window_id } => {
                 self.context.focus_window(window_id).await?;
                 json!({"status": "ok"})
+            }
+
+            CliCommand::GetPermissions => {
+                let status = self.context.get_permission_status().await?;
+                serde_json::to_value(&status)?
+            }
+
+            CliCommand::RequestPermissions => {
+                let status = self.context.request_permissions().await?;
+                serde_json::to_value(&status)?
             }
 
             // ── OCR ──

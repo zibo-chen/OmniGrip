@@ -61,6 +61,8 @@ When a terminal/shell is available, run `omni-grip <subcommand> [args]` directly
 ```bash
 # ── Environment ──
 omni-grip get-os-context                       # → {"os":"macos"|"windows"|"linux"}
+omni-grip get-permissions                      # → {os_type, accessibility_granted, ...}
+omni-grip request-permissions                  # → triggers macOS prompts if needed
 omni-grip get-displays                         # → [{id, width, height, scale_factor, ...}]
 
 # ── Screenshot ──
@@ -153,7 +155,20 @@ Use these when a terminal is not available (the MCP server is running via stdio)
 | Window | `focus_window` | Bring window to foreground |
 | Window | `get_active_window` | Get current active window |
 | System | `get_os_context` | Get OS type |
+| System | `get_permissions` | Inspect current permission status |
+| System | `request_permissions` | Trigger macOS permission prompts |
 | Clipboard | `clipboard_read` / `clipboard_write` | Read/write clipboard |
+
+### Permissions (macOS)
+
+```bash
+omni-grip get-permissions
+omni-grip request-permissions
+```
+
+- Use `get-permissions` to inspect Accessibility and Screen Recording state without opening prompts.
+- Use `request-permissions` to re-trigger the system prompt when a previous authorization attempt was dismissed.
+- OmniGrip may start in degraded mode while permissions are missing; input and screenshot commands will keep failing until you grant access and restart the process.
 
 ---
 

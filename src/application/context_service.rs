@@ -5,7 +5,8 @@
 use std::sync::Arc;
 
 use crate::domain::context::{
-    ClipboardManager, OsContext, OsContextProvider, WindowInfo, WindowManager,
+    ClipboardManager, OsContext, OsContextProvider, PermissionManager, PermissionStatus,
+    WindowInfo, WindowManager,
 };
 
 /// 系统上下文应用服务
@@ -15,6 +16,7 @@ pub struct ContextService {
     clipboard: Arc<dyn ClipboardManager>,
     window_mgr: Arc<dyn WindowManager>,
     os_ctx: Arc<dyn OsContextProvider>,
+    permissions: Arc<dyn PermissionManager>,
 }
 
 impl ContextService {
@@ -22,17 +24,31 @@ impl ContextService {
         clipboard: Arc<dyn ClipboardManager>,
         window_mgr: Arc<dyn WindowManager>,
         os_ctx: Arc<dyn OsContextProvider>,
+        permissions: Arc<dyn PermissionManager>,
     ) -> Self {
         Self {
             clipboard,
             window_mgr,
             os_ctx,
+            permissions,
         }
     }
 
     /// 获取当前操作系统类型
     pub fn get_os_context(&self) -> OsContext {
         self.os_ctx.get_os_context()
+    }
+
+    /// 获取当前系统权限状态
+    pub async fn get_permission_status(&self) -> anyhow::Result<PermissionStatus> {
+        let permissions = Arc::clone(&self.permissions);
+        tokio::task::spawn_blocking(move || permissions.get_permission_status()).await?
+    }
+
+    /// 主动触发系统权限申请
+    pub async fn request_permissions(&self) -> anyhow::Result<PermissionStatus> {
+        let permissions = Arc::clone(&self.permissions);
+        tokio::task::spawn_blocking(move || permissions.request_permissions()).await?
     }
 
     /// 读取剪贴板文本

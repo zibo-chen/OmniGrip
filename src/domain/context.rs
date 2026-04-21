@@ -28,6 +28,29 @@ pub struct WindowInfo {
     pub app_name: String,
 }
 
+/// 系统权限状态
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PermissionStatus {
+    /// 当前操作系统类型: "windows", "macos", "linux"
+    pub os_type: String,
+    /// 当前平台是否支持该权限管理能力
+    pub supported: bool,
+    /// macOS 辅助功能权限是否已授予（非 macOS 平台为 None）
+    pub accessibility_granted: Option<bool>,
+    /// macOS 录屏权限是否已授予（非 macOS 平台为 None）
+    pub screen_recording_granted: Option<bool>,
+    /// 当前缺失的权限名称列表
+    pub missing_permissions: Vec<String>,
+    /// 当前平台是否支持主动触发权限申请
+    pub can_request: bool,
+    /// 本次检查/申请是否实际触发过系统提示
+    pub prompt_triggered: bool,
+    /// 当前权限状态是否需要重启进程才会完整生效
+    pub restart_required: bool,
+    /// 面向调用方的简短说明
+    pub message: String,
+}
+
 // ---------------------------------------------------------------------------
 // 领域 Trait (Domain Traits)
 // ---------------------------------------------------------------------------
@@ -62,4 +85,15 @@ pub trait WindowManager: Send + Sync {
 /// 提供当前运行的操作系统类型信息。
 pub trait OsContextProvider: Send + Sync {
     fn get_os_context(&self) -> OsContext;
+}
+
+/// 系统权限管理能力
+///
+/// 目前主要用于 macOS 的辅助功能权限和录屏权限检查/申请。
+pub trait PermissionManager: Send + Sync {
+    /// 读取当前系统权限状态
+    fn get_permission_status(&self) -> anyhow::Result<PermissionStatus>;
+
+    /// 主动触发系统权限申请，并返回申请后的当前状态快照
+    fn request_permissions(&self) -> anyhow::Result<PermissionStatus>;
 }

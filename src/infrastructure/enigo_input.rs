@@ -25,11 +25,38 @@ unsafe impl Sync for EnigoInput {}
 
 impl EnigoInput {
     pub fn new() -> anyhow::Result<Self> {
-        let enigo = Enigo::new(&Settings::default())
-            .map_err(|e| anyhow::anyhow!("Failed to initialize Enigo: {:?}", e))?;
+        Self::new_with_prompt(true)
+    }
+
+    pub fn new_with_prompt(prompt_for_permissions: bool) -> anyhow::Result<Self> {
+        let enigo = Enigo::new(&build_enigo_settings(prompt_for_permissions))
+            .map_err(enrich_enigo_init_error)?;
         Ok(Self {
             enigo: Mutex::new(enigo),
         })
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn build_enigo_settings(prompt_for_permissions: bool) -> Settings {
+    let mut settings = Settings::default();
+    settings.open_prompt_to_get_permissions = prompt_for_permissions;
+    settings
+}
+
+#[cfg(not(target_os = "macos"))]
+fn build_enigo_settings(_prompt_for_permissions: bool) -> Settings {
+    Settings::default()
+}
+
+fn enrich_enigo_init_error(error: enigo::NewConError) -> anyhow::Error {
+    if cfg!(target_os = "macos") {
+        anyhow::anyhow!(
+            "Failed to initialize Enigo: {}. On macOS, grant OmniGrip access in System Settings > Privacy & Security > Accessibility, then restart the process.",
+            error
+        )
+    } else {
+        anyhow::anyhow!("Failed to initialize Enigo: {}", error)
     }
 }
 

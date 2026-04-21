@@ -16,9 +16,14 @@ use omni_grip::application::{
     action_service::ActionService, context_service::ContextService, ocr_service::OcrService,
     vision_service::VisionService,
 };
+use omni_grip::domain::{
+    action::{ClickType, KeyboardController, MouseButton, MouseController, Position},
+    context::{PermissionManager, PermissionStatus},
+};
 use omni_grip::infrastructure::{
     clipboard::ArboardClipboard,
     enigo_input::EnigoInput,
+    permissions::PlatformPermissionManager,
     window::{PlatformWindowManager, RuntimeOsContext},
     xcap_capture::XcapCapture,
 };
@@ -60,11 +65,20 @@ async fn main() -> anyhow::Result<()> {
             .finish(),
     )?;
 
+    let permission_mgr = Arc::new(PlatformPermissionManager::new());
+    let permission_status = if should_auto_request_permissions(cli.command.as_ref()) {
+        let status = permission_mgr.request_permissions()?;
+        log_permission_status(&status);
+        status
+    } else {
+        permission_mgr.get_permission_status()?
+    };
+
     // -----------------------------------------------------------------------
     // 1. 构造基础设施层 (Infrastructure)
     // -----------------------------------------------------------------------
     let capture = Arc::new(XcapCapture::new());
-    let input = Arc::new(EnigoInput::new()?);
+    let (mouse_input, keyboard_input) = build_input_controllers(&permission_status)?;
     let clipboard = Arc::new(ArboardClipboard::new()?);
     let window_mgr = Arc::new(PlatformWindowManager::new());
     let os_ctx = Arc::new(RuntimeOsContext::new());
@@ -87,11 +101,13 @@ async fn main() -> anyhow::Result<()> {
     // 2. 构造应用层 (Application Services)
     // -----------------------------------------------------------------------
     let vision_svc = Arc::new(VisionService::new(capture.clone()));
-    let action_svc = Arc::new(ActionService::new(
-        input.clone() as Arc<dyn omni_grip::domain::action::MouseController>,
-        input as Arc<dyn omni_grip::domain::action::KeyboardController>,
+    let action_svc = Arc::new(ActionService::new(mouse_input, keyboard_input));
+    let context_svc = Arc::new(ContextService::new(
+        clipboard,
+        window_mgr,
+        os_ctx,
+        permission_mgr,
     ));
-    let context_svc = Arc::new(ContextService::new(clipboard, window_mgr, os_ctx));
     let ocr_svc = Arc::new(OcrService::new(ocr_engine, capture));
 
     // -----------------------------------------------------------------------
@@ -118,6 +134,72 @@ async fn main() -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+fn should_auto_request_permissions(command: Option<&TopCommand>) -> bool {
+    !matches!(
+        command,
+        Some(TopCommand::Cli(CliCommand::GetPermissions | CliCommand::RequestPermissions))
+    )
+}
+
+fn log_permission_status(status: &PermissionStatus) {
+    if !status.supported {
+        return;
+    }
+
+    if status.missing_permissions.is_empty() {
+        tracing::info!("All required macOS permissions are already granted");
+    } else if status.prompt_triggered {
+        tracing::warn!("{}", status.message);
+    } else {
+        tracing::info!("{}", status.message);
+    }
+}
+
+fn build_input_controllers(
+    permission_status: &PermissionStatus,
+) -> anyhow::Result<(Arc<dyn MouseController>, Arc<dyn KeyboardController>)> {
+    let accessibility_missing = cfg!(target_os = "macos")
+        && matches!(permission_status.accessibility_granted, Some(false));
+
+    if accessibility_missing {
+        tracing::warn!(
+            "Input simulation is disabled until macOS Accessibility permission is granted"
+        );
+        return Ok(disabled_input_controllers(permission_status.message.clone()));
+    }
+
+    match EnigoInput::new_with_prompt(false) {
+        Ok(input) => {
+            let input = Arc::new(input);
+            Ok((
+                input.clone() as Arc<dyn MouseController>,
+                input as Arc<dyn KeyboardController>,
+            ))
+        }
+        Err(error) => {
+            if cfg!(target_os = "macos") {
+                tracing::warn!(
+                    "Input backend initialization failed; starting with input disabled: {}",
+                    error
+                );
+                Ok(disabled_input_controllers(error.to_string()))
+            } else {
+                Err(error)
+            }
+        }
+    }
+}
+
+fn disabled_input_controllers(
+    reason: String,
+) -> (Arc<dyn MouseController>, Arc<dyn KeyboardController>) {
+    let input = Arc::new(NoopInput::new(reason));
+    (
+        input.clone() as Arc<dyn MouseController>,
+        input as Arc<dyn KeyboardController>,
+    )
 }
 
 /// 尝试创建 OCR 引擎
@@ -200,5 +282,51 @@ impl omni_grip::domain::ocr::OcrEngine for NoopOcrEngine {
         _image: &omni_grip::domain::vision::RawImage,
     ) -> anyhow::Result<omni_grip::domain::ocr::OcrResult> {
         anyhow::bail!("OCR engine not available. Please install model files in ./models/")
+    }
+}
+
+/// 空输入实现（当输入能力不可用时的降级实现）
+struct NoopInput {
+    reason: String,
+}
+
+impl NoopInput {
+    fn new(reason: String) -> Self {
+        Self { reason }
+    }
+
+    fn error(&self) -> anyhow::Error {
+        anyhow::anyhow!(
+            "Input simulation is unavailable: {}. Grant macOS Accessibility permission and restart OmniGrip, or run the get_permissions/request_permissions tools to inspect and trigger the permission flow.",
+            self.reason
+        )
+    }
+}
+
+impl MouseController for NoopInput {
+    fn move_to(&self, _x: i32, _y: i32) -> anyhow::Result<()> {
+        Err(self.error())
+    }
+
+    fn move_relative(&self, _dx: i32, _dy: i32) -> anyhow::Result<()> {
+        Err(self.error())
+    }
+
+    fn click(&self, _button: MouseButton, _click_type: ClickType) -> anyhow::Result<()> {
+        Err(self.error())
+    }
+
+    fn drag(&self, _from: Position, _to: Position, _button: MouseButton) -> anyhow::Result<()> {
+        Err(self.error())
+    }
+}
+
+impl KeyboardController for NoopInput {
+    fn type_text(&self, _text: &str) -> anyhow::Result<()> {
+        Err(self.error())
+    }
+
+    fn press_key(&self, _keys: &[String]) -> anyhow::Result<()> {
+        Err(self.error())
     }
 }

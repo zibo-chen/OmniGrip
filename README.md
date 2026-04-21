@@ -51,7 +51,7 @@ OmniGrip follows Domain-Driven Design (DDD) principles:
 
 - Rust 2024 Edition (1.82+)
 - Platform-specific dependencies:
-  - **macOS**: Accessibility permissions required
+  - **macOS**: Accessibility and Screen Recording permissions required
   - **Linux**: X11 or Wayland support
   - **Windows**: No special requirements
 
@@ -90,6 +90,15 @@ Required files:
 
 # Enable debug logging
 RUST_LOG=debug ./target/release/omni-grip
+```
+
+On the first macOS launch, OmniGrip will automatically request Accessibility and Screen Recording permissions. If either permission is still missing, OmniGrip now stays up in a degraded mode so you can still inspect permission state and retrigger the prompt; input simulation and screen capture will continue to fail until you grant access in System Settings and restart the process.
+
+You can inspect or retrigger the permission flow explicitly:
+
+```bash
+omni-grip get-permissions
+omni-grip request-permissions
 ```
 
 ### MCP Client Configuration
@@ -133,6 +142,8 @@ Add to your MCP client configuration:
 | Tool | Description |
 |------|-------------|
 | `get_os_context` | Get OS type (windows/macos/linux) |
+| `get_permissions` | Get current system permission status |
+| `request_permissions` | Trigger system permission requests and return the latest status |
 | `clipboard_read` | Read clipboard text content |
 | `clipboard_write` | Write text to clipboard |
 | `get_active_window` | Get focused window info |

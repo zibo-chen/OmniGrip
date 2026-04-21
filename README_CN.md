@@ -53,7 +53,7 @@ OmniGrip 采用领域驱动设计（DDD）原则：
 
 - Rust 2024 Edition (1.82+)
 - 平台特定依赖：
-  - **macOS**: 需要授予辅助功能权限
+  - **macOS**: 需要授予辅助功能权限和录屏权限
   - **Linux**: 需要 X11 或 Wayland 支持
   - **Windows**: 无特殊要求
 
@@ -92,6 +92,15 @@ cargo build --release
 
 # 启用调试日志
 RUST_LOG=debug ./target/release/omni-grip
+```
+
+在 macOS 上首次启动时，OmniGrip 会自动触发辅助功能权限和录屏权限申请。如果任一权限仍未授予，OmniGrip 会以降级模式继续运行，方便你继续查询权限状态或再次触发申请；但在授权并重启进程前，输入模拟和截图相关能力仍会失败。
+
+你也可以显式查询或重新触发权限流程：
+
+```bash
+omni-grip get-permissions
+omni-grip request-permissions
 ```
 
 ### MCP 客户端配置
@@ -135,6 +144,8 @@ RUST_LOG=debug ./target/release/omni-grip
 | 工具 | 描述 |
 |------|------|
 | `get_os_context` | 获取操作系统类型（windows/macos/linux） |
+| `get_permissions` | 获取当前系统权限状态 |
+| `request_permissions` | 触发系统权限申请并返回最新状态 |
 | `clipboard_read` | 读取剪贴板文本内容 |
 | `clipboard_write` | 写入文本到剪贴板 |
 | `get_active_window` | 获取当前活动窗口信息 |
