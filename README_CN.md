@@ -7,6 +7,9 @@
 
 [English Documentation](README.md)
 
+> [!IMPORTANT]
+> **本项目已停止维护。** 现在 ChatGPT 以及多个桌面 Agent 应用都已内置更强大的电脑操作技能，OmniGrip 最初要解决的需求已被这些能力取代。本仓库已归档，仅保留用于历史参考。
+
 ## 功能特性
 
 ### 🖥️ 屏幕感知模块 (Vision)
@@ -194,7 +197,7 @@ MIT License - 详见 [LICENSE](LICENSE) 文件。
 
 ## 贡献
 
-欢迎贡献代码！请随时提交 Issue 和 Pull Request。
+本项目已停止维护，不再接受新的 Issue 或 Pull Request。
 
 ## 相关项目
 

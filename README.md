@@ -7,6 +7,9 @@
 
 [中文文档](README_CN.md)
 
+> [!IMPORTANT]
+> **This project is no longer maintained.** ChatGPT and multiple desktop agent applications now include more capable computer-use skills out of the box, superseding the original need for OmniGrip. This repository is archived and preserved for historical reference.
+
 ## Features
 
 ### 🖥️ Vision Module
@@ -192,4 +195,4 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit issues and pull requests.
+This project is no longer maintained and does not accept new issues or pull requests.
